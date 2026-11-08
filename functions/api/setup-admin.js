@@ -1,104 +1,54 @@
 
-function json(data, status = 200) {
-  return new Response(JSON.stringify(data), {
-    status,
-    headers: {
-      "Content-Type": "application/json",
-      "Cache-Control": "no-store"
-    }
-  });
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Buat Admin | Mining Insight Indonesia</title>
+<style>
+body{background:#07130f;color:white;font-family:Arial;padding:25px}
+main{max-width:420px;margin:50px auto;background:#10251c;padding:25px;border-radius:12px}
+input,button{box-sizing:border-box;width:100%;padding:13px;margin:9px 0;border-radius:6px}
+input{border:1px solid #777}
+button{background:#c4a45b;border:0;font-weight:bold}
+</style>
+</head>
+<body>
+<main>
+<h2>ADMINISTRATOR PERTAMA</h2>
+<p>Mining Insight Indonesia</p>
+<form id="setupForm">
+<input id="username" placeholder="Username admin" required>
+<input id="password" type="password" placeholder="Password minimal 12 karakter" required>
+<input id="secret" type="password" placeholder="ADMIN_SETUP_SECRET" required>
+<button>Buat Akun Administrator</button>
+</form>
+<p id="result"></p>
+</main>
+<script>
+document.getElementById("setupForm").onsubmit=async function(e){
+e.preventDefault();
+const result=document.getElementById("result");
+result.textContent="Memproses...";
+try{
+const response=await fetch("/api/setup-admin",{
+method:"POST",
+headers:{
+"Content-Type":"application/json",
+"X-Setup-Secret":document.getElementById("secret").value
+},
+body:JSON.stringify({
+username:document.getElementById("username").value,
+password:document.getElementById("password").value
+})
+});
+const data=await response.json();
+result.textContent=data.message;
+if(data.success)this.reset();
+}catch(error){
+result.textContent="Gagal menghubungi server.";
 }
-
-function toBase64(bytes) {
-  return btoa(String.fromCharCode(...new Uint8Array(bytes)));
-}
-
-async function hashPassword(password) {
-  const encoder = new TextEncoder();
-  const salt = crypto.getRandomValues(new Uint8Array(16));
-
-  const key = await crypto.subtle.importKey(
-    "raw",
-    encoder.encode(password),
-    "PBKDF2",
-    false,
-    ["deriveBits"]
-  );
-
-  const hash = await crypto.subtle.deriveBits({
-    name: "PBKDF2",
-    salt,
-    iterations: 310000,
-    hash: "SHA-256"
-  }, key, 256);
-
-  return `pbkdf2$310000$${toBase64(salt)}$${toBase64(hash)}`;
-}
-
-export async function onRequestPost({ request, env }) {
-  if (!env.DB || !env.ADMIN_SETUP_SECRET) {
-    return json({
-      success: false,
-      message: "Konfigurasi database atau secret belum tersedia."
-    }, 500);
-  }
-
-  if (
-    request.headers.get("X-Setup-Secret") !==
-    env.ADMIN_SETUP_SECRET
-  ) {
-    return json({
-      success: false,
-      message: "Akses ditolak."
-    }, 403);
-  }
-
-  try {
-    const count = await env.DB.prepare(
-      "SELECT COUNT(*) AS total FROM admins"
-    ).first();
-
-    if (count.total > 0) {
-      return json({
-        success: false,
-        message: "Administrator sudah tersedia."
-      }, 409);
-    }
-
-    const body = await request.json();
-    const username = String(body.username || "").trim();
-    const password = String(body.password || "");
-
-    if (!/^[a-zA-Z0-9_]{4,30}$/.test(username)) {
-      return json({
-        success: false,
-        message: "Username harus 4–30 karakter."
-      }, 400);
-    }
-
-    if (password.length < 12) {
-      return json({
-        success: false,
-        message: "Password minimal 12 karakter."
-      }, 400);
-    }
-
-    const passwordHash = await hashPassword(password);
-
-    await env.DB.prepare(`
-      INSERT INTO admins (username, password_hash)
-      VALUES (?, ?)
-    `).bind(username, passwordHash).run();
-
-    return json({
-      success: true,
-      message: "Administrator pertama berhasil dibuat."
-    });
-
-  } catch (error) {
-    return json({
-      success: false,
-      message: "Gagal membuat administrator."
-    }, 500);
-  }
-}
+};
+</script>
+</body>
+</html>
