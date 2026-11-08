@@ -1,4 +1,54 @@
-<!DOCTYPE html><html lang="id"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Admin | Mining Insight Indonesia</title><link rel="stylesheet" href="/style.css"></head><body class="admin-body"><main class="admin-wrap"><div class="admin-top"><a class="brand" href="/"><span class="brand-mark">MI</span><span><b>MINING INSIGHT</b><small>ADMINISTRATION</small></span></a><a href="/" class="text-link">← Kembali ke website</a></div>
-<section class="admin-panel"><div id="loginView"><div class="eyebrow">SECURE ADMIN ACCESS</div><h1>Admin Login</h1><p>Masuk menggunakan kata sandi administrator yang disimpan secara aman di pengaturan Cloudflare. Jangan bagikan kata sandi ini kepada siapa pun.</p><form id="loginForm" class="admin-form"><label>Kata sandi administrator<input type="password" id="password" required autocomplete="current-password"></label><button class="admin-btn">MASUK KE DASHBOARD →</button><div id="loginMessage" class="admin-message"></div></form></div>
-<div id="dashboardView" class="hidden"><div class="admin-top"><div><div class="eyebrow">CONTENT MANAGEMENT</div><h1>Dashboard Admin</h1><p>Kelola artikel Mining Insight Indonesia.</p></div><button id="logoutBtn" class="danger">Keluar</button></div>
-<form id="articleForm" class="admin-form"><input type="hidden" id="articleId"><label>Judul berita<input id="title" required maxlength="180"></label><label>Kategori<select id="category"><option>Berita Tambang</option><option>K3 & Keselamatan</option><option>Operasional</option><option>Teknologi</option><option>Regulasi</option><option>Karier</option></select></label><label>Ringkasan<textarea id="summary" maxlength="400"></textarea></label><label>URL foto (opsional)<input id="imageUrl" type="url" placeholder="https://..."></label><label>Isi berita<textarea id="body" required></textarea></label><label>Status<select id="status"><option value="draft">Simpan sebagai draft</option><option value="published">Terbitkan sekarang</option></select></label><button class="admin-btn" id="saveBtn">SIMPAN ARTIKEL</button><button type="button" id="resetBtn" class="danger">Kosongkan formulir</button><div id="formMessage" class="admin-message"></div></form><div class="admin-list"><h2>Daftar Artikel</h2><div id="articleList">Memuat…</div></div></div></section><p style="text-align:center;color:#728176;font-size:11px;margin-top:22px">MINING INSIGHT INDONESIA • ADMIN PANEL</p></main><script src="/admin.js"></script></body></html>
+
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Buat Admin | Mining Insight Indonesia</title>
+<style>
+body{background:#07130f;color:white;font-family:Arial;padding:25px}
+main{max-width:420px;margin:50px auto;background:#10251c;padding:25px;border-radius:12px}
+input,button{box-sizing:border-box;width:100%;padding:13px;margin:9px 0;border-radius:6px}
+input{border:1px solid #777}
+button{background:#c4a45b;border:0;font-weight:bold}
+</style>
+</head>
+<body>
+<main>
+<h2>ADMINISTRATOR PERTAMA</h2>
+<p>Mining Insight Indonesia</p>
+<form id="setupForm">
+<input id="username" placeholder="Username admin" required>
+<input id="password" type="password" placeholder="Password minimal 12 karakter" required>
+<input id="secret" type="password" placeholder="ADMIN_SETUP_SECRET" required>
+<button>Buat Akun Administrator</button>
+</form>
+<p id="result"></p>
+</main>
+<script>
+document.getElementById("setupForm").onsubmit=async function(e){
+e.preventDefault();
+const result=document.getElementById("result");
+result.textContent="Memproses...";
+try{
+const response=await fetch("/api/setup-admin",{
+method:"POST",
+headers:{
+"Content-Type":"application/json",
+"X-Setup-Secret":document.getElementById("secret").value
+},
+body:JSON.stringify({
+username:document.getElementById("username").value,
+password:document.getElementById("password").value
+})
+});
+const data=await response.json();
+result.textContent=data.message;
+if(data.success)this.reset();
+}catch(error){
+result.textContent="Gagal menghubungi server.";
+}
+};
+</script>
+</body>
+</html>
