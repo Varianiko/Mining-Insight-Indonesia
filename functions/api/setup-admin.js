@@ -166,6 +166,8 @@ export async function onRequestPost({ request, env }) {
 
   } catch (error) {
 
+    } catch (error) {
+
     console.error("SETUP ADMIN ERROR:", error);
 
     let detail = String(error.message || error);
@@ -180,4 +182,3 @@ export async function onRequestPost({ request, env }) {
       detail: detail
     }, 500);
   }
-}
