@@ -3,24 +3,40 @@ import { json, hashToken, sessionCookie } from "./_auth.js";
 
 export async function onRequestPost({ request, env }) {
   if (!env.DB) {
-    return json({ success: false, message: "Database belum terhubung." }, 500);
+    return json({
+      success: false,
+      message: "Database D1 belum terhubung."
+    }, 500);
+  }
+
+  let body;
+
+  try {
+    body = await request.json();
+  } catch {
+    return json({
+      success: false,
+      message: "Format data tidak valid."
+    }, 400);
+  }
+
+  const username = String(body.username || "").trim();
+  const password = String(body.password || "");
+
+  if (!username || !password) {
+    return json({
+      success: false,
+      message: "Username dan password wajib diisi."
+    }, 400);
   }
 
   try {
-    const body = await request.json();
-    const username = String(body.username || "").trim();
-    const password = String(body.password || "");
-
-    if (!username || !password) {
-      return json({
-        success: false,
-        message: "Username dan password wajib diisi."
-      }, 400);
-    }
-
-    const admin = await env.DB.prepare(
-      "SELECT id, username, password_hash FROM admins WHERE username = ? LIMIT 1"
-    ).bind(username).first();
+    const admin = await env.DB.prepare(`
+      SELECT id, username, password_hash
+      FROM admins
+      WHERE username = ?
+      LIMIT 1
+    `).bind(username).first();
 
     if (!admin) {
       return json({
@@ -29,9 +45,12 @@ export async function onRequestPost({ request, env }) {
       }, 401);
     }
 
-    const valid = await verifyPassword(password, admin.password_hash);
+    const verified = await verifyPassword(
+      password,
+      admin.password_hash
+    );
 
-    if (!valid) {
+    if (!verified) {
       return json({
         success: false,
         message: "Username atau password salah."
@@ -49,7 +68,11 @@ export async function onRequestPost({ request, env }) {
       INSERT INTO admin_sessions
       (admin_id, token_hash, expires_at)
       VALUES (?, ?, ?)
-    `).bind(admin.id, tokenHash, expiresAt).run();
+    `).bind(
+      admin.id,
+      tokenHash,
+      expiresAt
+    ).run();
 
     return json({
       success: true,
@@ -78,15 +101,20 @@ async function verifyPassword(password, storedHash) {
 
     const parts = storedHash.split("$");
 
-    if (parts.length !== 4 || parts[0] !== "pbkdf2") {
+    if (
+      parts.length !== 4 ||
+      parts[0] !== "pbkdf2"
+    ) {
       return false;
     }
 
     const iterations = Number(parts[1]);
 
-    if (!Number.isInteger(iterations) ||
-        iterations < 10000 ||
-        iterations > 1000000) {
+    if (
+      !Number.isInteger(iterations) ||
+      iterations < 10000 ||
+      iterations > 1000000
+    ) {
       return false;
     }
 
@@ -100,7 +128,10 @@ async function verifyPassword(password, storedHash) {
       c => c.charCodeAt(0)
     );
 
-    if (salt.length !== 16 || expected.length !== 32) {
+    if (
+      salt.length !== 16 ||
+      expected.length !== 32
+    ) {
       return false;
     }
 
@@ -112,14 +143,19 @@ async function verifyPassword(password, storedHash) {
       ["deriveBits"]
     );
 
-    const result = await crypto.subtle.deriveBits({
-      name: "PBKDF2",
-      salt,
-      iterations,
-      hash: "SHA-256"
-    }, key, 256);
+    const result = await crypto.subtle.deriveBits(
+      {
+        name: "PBKDF2",
+        salt: salt,
+        iterations: iterations,
+        hash: "SHA-256"
+      },
+      key,
+      256
+    );
 
     const actual = new Uint8Array(result);
+
     let difference = 0;
 
     for (let i = 0; i < expected.length; i++) {
@@ -128,7 +164,8 @@ async function verifyPassword(password, storedHash) {
 
     return difference === 0;
 
-  } catch {
+  } catch (error) {
+    console.error("PASSWORD VERIFY ERROR:", error);
     return false;
   }
 }
