@@ -1,74 +1,81 @@
 
+import { json, hashToken, sessionCookie } from "./_auth.js";
+
 export async function onRequestPost({ request, env }) {
+  if (!env.DB) {
+    return json({ success: false, message: "Database belum terhubung." }, 500);
+  }
+
   try {
-    const { username, password } = await request.json();
+    const body = await request.json();
+    const username = String(body.username || "").trim();
+    const password = String(body.password || "");
 
     if (!username || !password) {
-      return Response.json(
-        { success: false, message: "Username dan password wajib diisi" },
-        { status: 400 }
-      );
+      return json({
+        success: false,
+        message: "Username dan password wajib diisi."
+      }, 400);
     }
 
     const admin = await env.DB.prepare(
-      "SELECT id, username, password_hash FROM admins WHERE username = ?"
+      "SELECT id, username, password_hash FROM admins WHERE username = ? LIMIT 1"
     ).bind(username).first();
 
     if (!admin) {
-      return Response.json(
-        { success: false, message: "Username atau password salah" },
-        { status: 401 }
-      );
+      return json({
+        success: false,
+        message: "Username atau password salah."
+      }, 401);
     }
 
     const valid = await verifyPassword(password, admin.password_hash);
 
     if (!valid) {
-      return Response.json(
-        { success: false, message: "Username atau password salah" },
-        { status: 401 }
-      );
+      return json({
+        success: false,
+        message: "Username atau password salah."
+      }, 401);
     }
 
     const token = crypto.randomUUID() + crypto.randomUUID();
+    const tokenHash = await hashToken(token);
 
-    const tokenHash = await crypto.subtle.digest(
-      "SHA-256",
-      new TextEncoder().encode(token)
-    );
+    const expiresAt = new Date(
+      Date.now() + 7 * 24 * 60 * 60 * 1000
+    ).toISOString();
 
-    const hashHex = Array.from(new Uint8Array(tokenHash))
-      .map(b => b.toString(16).padStart(2, "0"))
-      .join("");
+    await env.DB.prepare(`
+      INSERT INTO admin_sessions
+      (admin_id, token_hash, expires_at)
+      VALUES (?, ?, ?)
+    `).bind(admin.id, tokenHash, expiresAt).run();
 
-    await env.DB.prepare(
-      "INSERT INTO sessions (admin_id, token_hash, expires_at) VALUES (?, ?, datetime('now', '+1 day'))"
-    ).bind(admin.id, hashHex).run();
-
-    return new Response(
-      JSON.stringify({
-        success: true,
-        message: "Login berhasil",
-        token
-      }),
-      {
-        headers: {
-          "Content-Type": "application/json",
-          "Set-Cookie": `admin_token=${token}; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=86400`
-        }
+    return json({
+      success: true,
+      message: "Login berhasil.",
+      admin: {
+        id: admin.id,
+        username: admin.username
       }
-    );
+    }, 200, {
+      "Set-Cookie": sessionCookie(token)
+    });
 
   } catch (error) {
-    return Response.json(
-      { success: false, message: "Terjadi kesalahan server" },
-      { status: 500 }
-    );
+    console.error("LOGIN ERROR:", error);
+
+    return json({
+      success: false,
+      message: "Terjadi kesalahan saat login."
+    }, 500);
   }
 }
 
 async function verifyPassword(password, storedHash) {
   try {
+    if (!storedHash) return false;
+
     const parts = storedHash.split("$");
 
     if (parts.length !== 4 || parts[0] !== "pbkdf2") {
@@ -77,12 +84,21 @@ async function verifyPassword(password, storedHash) {
 
     const iterations = Number(parts[1]);
 
-    if (!Number.isInteger(iterations) || iterations < 10000 || iterations > 1000000) {
+    if (!Number.isInteger(iterations) ||
+        iterations < 10000 ||
+        iterations > 1000000) {
       return false;
     }
 
-    const salt = Uint8Array.from(atob(parts[2]), c => c.charCodeAt(0));
-    const expected = Uint8Array.from(atob(parts[3]), c => c.charCodeAt(0));
+    const salt = Uint8Array.from(
+      atob(parts[2]),
+      c => c.charCodeAt(0)
+    );
+
+    const expected = Uint8Array.from(
+      atob(parts[3]),
+      c => c.charCodeAt(0)
+    );
 
     if (salt.length !== 16 || expected.length !== 32) {
       return false;
@@ -96,16 +112,12 @@ async function verifyPassword(password, storedHash) {
       ["deriveBits"]
     );
 
-    const result = await crypto.subtle.deriveBits(
-      {
-        name: "PBKDF2",
-        salt,
-        iterations,
-        hash: "SHA-256"
-      },
-      key,
-      256
-    );
+    const result = await crypto.subtle.deriveBits({
+      name: "PBKDF2",
+      salt,
+      iterations,
+      hash: "SHA-256"
+    }, key, 256);
 
     const actual = new Uint8Array(result);
     let difference = 0;
