@@ -35,7 +35,7 @@ async function hashPassword(password) {
   const hash = await crypto.subtle.deriveBits(
     {
       name: "PBKDF2",
-      salt: salt,
+      salt,
       iterations: 310000,
       hash: "SHA-256"
     },
@@ -53,7 +53,6 @@ async function hashPassword(password) {
 
 export async function onRequestPost({ request, env }) {
 
-  // 1. Periksa database dan konfigurasi
   if (!env.DB) {
     return json({
       success: false,
@@ -64,22 +63,20 @@ export async function onRequestPost({ request, env }) {
   if (!env.ADMIN_SETUP_SECRET) {
     return json({
       success: false,
-      message: "ADMIN_SETUP_SECRET belum tersedia pada environment ini."
+      message: "ADMIN_SETUP_SECRET belum tersedia."
     }, 500);
   }
 
-  // 2. Periksa secret
   const suppliedSecret =
     request.headers.get("X-Setup-Secret") || "";
 
   if (suppliedSecret !== env.ADMIN_SETUP_SECRET) {
     return json({
       success: false,
-      message: "Secret tidak sesuai. Periksa kembali Cloudflare."
+      message: "Secret Cloudflare tidak sesuai."
     }, 403);
   }
 
-  // 3. Periksa format permintaan
   let body;
 
   try {
@@ -91,52 +88,38 @@ export async function onRequestPost({ request, env }) {
     }, 400);
   }
 
-  // 4. Ambil data administrator
   const username = String(body.username || "").trim();
   const password = String(body.password || "");
 
   if (!/^[a-zA-Z0-9_]{4,30}$/.test(username)) {
     return json({
       success: false,
-      message: "Username harus 4 sampai 30 karakter, tanpa spasi."
+      message: "Username harus 4 sampai 30 karakter."
     }, 400);
   }
 
-  if (password.length < 12) {
+  if (password.length < 12 || password.length > 256) {
     return json({
       success: false,
-      message: "Password minimal 12 karakter."
+      message: "Password harus 12 sampai 256 karakter."
     }, 400);
   }
 
-  if (password.length > 256) {
-    return json({
-      success: false,
-      message: "Password terlalu panjang."
-    }, 400);
-  }
-
-  // 5. Buat administrator pertama
   try {
 
     const existing = await env.DB.prepare(`
-      SELECT id, username
-      FROM admins
-      LIMIT 1
+      SELECT id FROM admins LIMIT 1
     `).first();
 
     if (existing) {
       return json({
         success: false,
-        message: "Akun administrator sudah tersedia. Silakan gunakan halaman login."
+        message: "Akun administrator sudah tersedia. Silakan login."
       }, 409);
     }
 
-    // Hash password
     const passwordHash = await hashPassword(password);
 
-    // Insert hanya jika tabel admins masih kosong.
-    // Ini juga mencegah dua pendaftaran pertama berjalan bersamaan.
     const result = await env.DB.prepare(`
       INSERT INTO admins (username, password_hash)
       SELECT ?, ?
@@ -149,13 +132,13 @@ export async function onRequestPost({ request, env }) {
     ).run();
 
     if (!result.success) {
-      throw new Error("Database menolak penyimpanan administrator.");
+      throw new Error("Penyimpanan database gagal.");
     }
 
     if (!result.meta || result.meta.changes !== 1) {
       return json({
         success: false,
-        message: "Akun administrator sudah dibuat oleh proses lain."
+        message: "Administrator sudah dibuat oleh proses lain."
       }, 409);
     }
 
@@ -166,14 +149,12 @@ export async function onRequestPost({ request, env }) {
 
   } catch (error) {
 
-    } catch (error) {
-
     console.error("SETUP ADMIN ERROR:", error);
 
     let detail = String(error.message || error);
 
     if (detail.includes("UNIQUE constraint failed")) {
-      detail = "Username sudah digunakan. Silakan pilih username lain.";
+      detail = "Username sudah digunakan.";
     }
 
     return json({
@@ -181,4 +162,6 @@ export async function onRequestPost({ request, env }) {
       message: "Gagal membuat akun administrator.",
       detail: detail
     }, 500);
+
   }
+}
