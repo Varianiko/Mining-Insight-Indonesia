@@ -1,0 +1,104 @@
+
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Setup Admin | Mining Insight Indonesia</title>
+<style>
+*{box-sizing:border-box}
+body{
+margin:0;
+background:#07130f;
+color:#f4f5ef;
+font-family:Arial,sans-serif;
+padding:20px;
+}
+main{
+max-width:430px;
+margin:70px auto;
+padding:28px;
+background:#10251c;
+border:1px solid #b99a4b;
+border-radius:12px;
+}
+h1{font-size:25px}
+p{color:#b8c4ba;line-height:1.6}
+label{display:block;margin-top:18px}
+input{
+width:100%;
+padding:13px;
+margin-top:8px;
+border-radius:6px;
+border:1px solid #52665a;
+background:#07130f;
+color:white;
+}
+button{
+width:100%;
+padding:14px;
+margin-top:22px;
+background:#b99a4b;
+border:0;
+border-radius:6px;
+font-weight:bold;
+cursor:pointer;
+}
+#result{margin-top:18px}
+</style>
+</head>
+<body>
+<main>
+<h1>Buat Administrator</h1>
+<p>Mining Insight Indonesia</p>
+
+<form id="setupForm">
+<label>Username administrator</label>
+<input id="username" required minlength="4" maxlength="30">
+
+<label>Password administrator</label>
+<input id="password" type="password" required minlength="12">
+
+<label>Secret Cloudflare</label>
+<input id="secret" type="password" required>
+
+<button type="submit">BUAT AKUN ADMIN</button>
+</form>
+
+<p id="result"></p>
+</main>
+
+<script>
+document.getElementById("setupForm")
+.addEventListener("submit",async function(e){
+e.preventDefault();
+
+const result=document.getElementById("result");
+result.textContent="Sedang memproses...";
+
+try{
+const response=await fetch("/api/setup-admin",{
+method:"POST",
+headers:{
+"Content-Type":"application/json",
+"X-Setup-Secret":document.getElementById("secret").value
+},
+body:JSON.stringify({
+username:document.getElementById("username").value,
+password:document.getElementById("password").value
+})
+});
+
+const data=await response.json();
+result.textContent=data.message;
+
+if(data.success){
+this.reset();
+}
+}catch(error){
+result.textContent="Koneksi server gagal.";
+}
+});
+</script>
+</body>
+</html>
