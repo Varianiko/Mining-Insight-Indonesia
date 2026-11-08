@@ -24,6 +24,8 @@ async function hashPassword(password) {
     new Uint8Array(16)
   );
 
+  const iterations = 100000;
+
   const key = await crypto.subtle.importKey(
     "raw",
     encoder.encode(password),
@@ -35,8 +37,8 @@ async function hashPassword(password) {
   const hash = await crypto.subtle.deriveBits(
     {
       name: "PBKDF2",
-      salt,
-      iterations: 310000,
+      salt: salt,
+      iterations: iterations,
       hash: "SHA-256"
     },
     key,
@@ -45,7 +47,7 @@ async function hashPassword(password) {
 
   return [
     "pbkdf2",
-    "310000",
+    String(iterations),
     toBase64(salt),
     toBase64(new Uint8Array(hash))
   ].join("$");
@@ -108,13 +110,15 @@ export async function onRequestPost({ request, env }) {
   try {
 
     const existing = await env.DB.prepare(`
-      SELECT id FROM admins LIMIT 1
+      SELECT id, username
+      FROM admins
+      LIMIT 1
     `).first();
 
     if (existing) {
       return json({
         success: false,
-        message: "Akun administrator sudah tersedia. Silakan login."
+        message: "Administrator sudah tersedia. Silakan login."
       }, 409);
     }
 
@@ -132,7 +136,7 @@ export async function onRequestPost({ request, env }) {
     ).run();
 
     if (!result.success) {
-      throw new Error("Penyimpanan database gagal.");
+      throw new Error("Database gagal menyimpan administrator.");
     }
 
     if (!result.meta || result.meta.changes !== 1) {
