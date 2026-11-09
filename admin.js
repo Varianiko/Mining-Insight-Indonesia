@@ -16,8 +16,8 @@ const API = "/api/articles";
 let articlesCache = [];
 
 // MENAMPILKAN PESAN
-function showMessage(element, text, success = false) {
-  element.textContent = text;
+function showMessage(element, message, success = false) {
+  element.textContent = message;
   element.style.color = success ? "#65c98a" : "#e5a36b";
 }
 
@@ -35,7 +35,7 @@ async function apiRequest(url, options = {}) {
   const data = await response.json().catch(() => ({}));
 
   if (!response.ok || !data.success) {
-    throw new Error(data.message || "Terjadi kesalahan.");
+    throw new Error(data.message || "Terjadi kesalahan API.");
   }
 
   return data;
@@ -55,23 +55,23 @@ async function checkSession() {
       showDashboard();
       return true;
     }
-
   } catch (error) {
-    console.error("Session check failed:", error);
+    console.error("Session error:", error);
   }
 
   showLogin();
   return false;
 }
 
-// MENAMPILKAN DASHBOARD
+// DASHBOARD
 function showDashboard() {
   loginView.classList.add("hidden");
   dashboardView.classList.remove("hidden");
+
   loadArticles();
 }
 
-// MENAMPILKAN LOGIN
+// LOGIN
 function showLogin() {
   dashboardView.classList.add("hidden");
   loginView.classList.remove("hidden");
@@ -106,7 +106,7 @@ loginForm.addEventListener("submit", async function(e) {
       throw new Error("Sesi login belum berhasil dibuat.");
     }
 
-    showMessage(loginMessage, "");
+    showMessage(loginMessage, "Login berhasil.", true);
 
   } catch (error) {
     showMessage(loginMessage, error.message);
@@ -115,7 +115,7 @@ loginForm.addEventListener("submit", async function(e) {
   }
 });
 
-// LOGOUT ADMIN
+// LOGOUT
 logoutBtn.addEventListener("click", async function() {
   if (!confirm("Apakah Anda yakin ingin keluar?")) return;
 
@@ -155,7 +155,8 @@ async function loadArticles() {
     renderArticles();
 
   } catch (error) {
-    articleList.textContent = error.message;
+    articleList.textContent = "Gagal memuat artikel: " + error.message;
+    console.error("Load articles error:", error);
   }
 }
 
@@ -183,7 +184,8 @@ function renderArticles() {
     const info = document.createElement("p");
 
     info.textContent =
-      article.category + " • " +
+      (article.category || "Berita Tambang") +
+      " • " +
       (article.status === "published" ? "Terbit" : "Draft");
 
     info.style.fontSize = "12px";
@@ -232,9 +234,11 @@ function editArticle(id) {
   document.getElementById("category").value =
     article.category || "Berita Tambang";
   document.getElementById("summary").value = article.summary || "";
-  document.getElementById("imageUrl").value = article.image_url || "";
+  document.getElementById("imageUrl").value =
+    article.image_url || "";
   document.getElementById("body").value = article.body || "";
-  document.getElementById("status").value = article.status || "draft";
+  document.getElementById("status").value =
+    article.status || "draft";
 
   saveBtn.textContent = "PERBARUI ARTIKEL";
 
@@ -288,13 +292,13 @@ articleForm.addEventListener("submit", async function(e) {
     showMessage(formMessage, data.message, true);
 
     articleForm.reset();
-
     document.getElementById("articleId").value = "";
 
     await loadArticles();
 
   } catch (error) {
     showMessage(formMessage, error.message);
+    console.error("Save article error:", error);
   } finally {
     saveBtn.disabled = false;
     saveBtn.textContent = "SIMPAN ARTIKEL";
