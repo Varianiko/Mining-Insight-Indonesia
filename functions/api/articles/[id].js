@@ -40,12 +40,13 @@ export async function onRequestPut({ request, env, params }) {
     const category = String(data.category || "Berita Tambang").trim();
     const summary = String(data.summary || "").trim();
     const imageUrl = String(data.image_url || "").trim();
-    const body = String(data.body || "").trim();
+    const content = String(data.body || data.content || "").trim();
+
     const status = data.status === "published"
       ? "published"
       : "draft";
 
-    if (!title || !body) {
+    if (!title || !content) {
       return json({
         success: false,
         message: "Judul dan isi artikel wajib diisi."
@@ -56,7 +57,7 @@ export async function onRequestPut({ request, env, params }) {
       title.length > 180 ||
       category.length > 100 ||
       summary.length > 400 ||
-      body.length > 100000
+      content.length > 100000
     ) {
       return json({
         success: false,
@@ -85,15 +86,16 @@ export async function onRequestPut({ request, env, params }) {
           category = ?,
           summary = ?,
           image_url = ?,
-          body = ?,
-          status = ?
+          content = ?,
+          status = ?,
+          updated_at = CURRENT_TIMESTAMP
       WHERE id = ?
     `).bind(
       title,
       category,
       summary,
       imageUrl,
-      body,
+      content,
       status,
       id
     ).run();
@@ -115,7 +117,7 @@ export async function onRequestPut({ request, env, params }) {
 
     return json({
       success: false,
-      message: "Gagal memperbarui artikel."
+      message: "Gagal memperbarui artikel: " + error.message
     }, 500);
   }
 }
@@ -164,7 +166,7 @@ export async function onRequestDelete({ request, env, params }) {
 
     return json({
       success: false,
-      message: "Gagal menghapus artikel."
+      message: "Gagal menghapus artikel: " + error.message
     }, 500);
   }
 }
