@@ -1,11 +1,47 @@
 
-
 const loginView = document.getElementById("loginView");
 const dashboardView = document.getElementById("dashboardView");
 const loginForm = document.getElementById("loginForm");
 const loginMessage = document.getElementById("loginMessage");
 const logoutBtn = document.getElementById("logoutBtn");
 
+const articleForm = document.getElementById("articleForm");
+const articleList = document.getElementById("articleList");
+const formMessage = document.getElementById("formMessage");
+const saveBtn = document.getElementById("saveBtn");
+const resetBtn = document.getElementById("resetBtn");
+
+const API = "/api/articles";
+
+let articlesCache = [];
+
+// MENAMPILKAN PESAN
+function showMessage(element, text, success = false) {
+  element.textContent = text;
+  element.style.color = success ? "#65c98a" : "#e5a36b";
+}
+
+// FUNGSI API
+async function apiRequest(url, options = {}) {
+  const response = await fetch(url, {
+    credentials: "same-origin",
+    cache: "no-store",
+    ...options,
+    headers: {
+      ...(options.headers || {})
+    }
+  });
+
+  const data = await response.json().catch(() => ({}));
+
+  if (!response.ok || !data.success) {
+    throw new Error(data.message || "Terjadi kesalahan.");
+  }
+
+  return data;
+}
+
+// MEMERIKSA LOGIN
 async function checkSession() {
   try {
     const response = await fetch("/api/me", {
@@ -28,16 +64,20 @@ async function checkSession() {
   return false;
 }
 
+// MENAMPILKAN DASHBOARD
 function showDashboard() {
   loginView.classList.add("hidden");
   dashboardView.classList.remove("hidden");
+  loadArticles();
 }
 
+// MENAMPILKAN LOGIN
 function showLogin() {
   dashboardView.classList.add("hidden");
   loginView.classList.remove("hidden");
 }
 
+// LOGIN ADMIN
 loginForm.addEventListener("submit", async function(e) {
   e.preventDefault();
 
@@ -46,60 +86,55 @@ loginForm.addEventListener("submit", async function(e) {
   const username = document.getElementById("username").value.trim();
   const password = document.getElementById("password").value;
 
-  loginMessage.textContent = "Memeriksa akun administrator...";
+  showMessage(loginMessage, "Memeriksa akun administrator...");
   button.disabled = true;
 
   try {
-    const response = await fetch("/api/login", {
+    await apiRequest("/api/login", {
       method: "POST",
-      credentials: "same-origin",
       headers: {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({ username, password })
     });
 
-    const data = await response.json();
-
-    if (!response.ok || !data.success) {
-      throw new Error(data.message || "Login gagal.");
-    }
-
     document.getElementById("password").value = "";
 
     const authenticated = await checkSession();
 
     if (!authenticated) {
-      throw new Error("Session belum berhasil dibuat.");
+      throw new Error("Sesi login belum berhasil dibuat.");
     }
 
+    showMessage(loginMessage, "");
+
   } catch (error) {
-    loginMessage.textContent = error.message;
+    showMessage(loginMessage, error.message);
   } finally {
     button.disabled = false;
   }
 });
 
+// LOGOUT ADMIN
 logoutBtn.addEventListener("click", async function() {
   if (!confirm("Apakah Anda yakin ingin keluar?")) return;
 
   logoutBtn.disabled = true;
 
   try {
-    const response = await fetch("/api/logout", {
-      method: "POST",
-      credentials: "same-origin"
+    await apiRequest("/api/logout", {
+      method: "POST"
     });
 
-    const data = await response.json();
+    articlesCache = [];
+    articleForm.reset();
 
-    if (!response.ok || !data.success) {
-      throw new Error(data.message || "Logout gagal.");
-    }
+    document.getElementById("articleId").value = "";
 
     showLogin();
     loginForm.reset();
-    loginMessage.textContent = "Anda berhasil logout.";
+
+    showMessage(loginMessage, "Anda berhasil logout.", true);
 
   } catch (error) {
     alert(error.message);
@@ -108,21 +143,203 @@ logoutBtn.addEventListener("click", async function() {
   }
 });
 
-// Mencegah formulir artikel melakukan reload
-// sebelum API pengelolaan artikel diperiksa.
-document.getElementById("articleForm")
-  .addEventListener("submit", function(e) {
-    e.preventDefault();
+// MEMUAT DAFTAR ARTIKEL
+async function loadArticles() {
+  articleList.textContent = "Memuat daftar artikel...";
 
-    document.getElementById("formMessage").textContent =
-      "API pengelolaan artikel belum dikonfigurasi.";
+  try {
+    const data = await apiRequest(API);
+
+    articlesCache = data.articles || [];
+
+    renderArticles();
+
+  } catch (error) {
+    articleList.textContent = error.message;
+  }
+}
+
+// MENAMPILKAN DAFTAR ARTIKEL
+function renderArticles() {
+  articleList.replaceChildren();
+
+  if (articlesCache.length === 0) {
+    articleList.textContent = "Belum ada artikel.";
+    return;
+  }
+
+  articlesCache.forEach(article => {
+    const item = document.createElement("div");
+
+    item.style.padding = "16px";
+    item.style.marginBottom = "12px";
+    item.style.border = "1px solid #365344";
+    item.style.borderRadius = "10px";
+
+    const title = document.createElement("h3");
+    title.textContent = article.title;
+    title.style.margin = "0 0 8px";
+
+    const info = document.createElement("p");
+
+    info.textContent =
+      article.category + " • " +
+      (article.status === "published" ? "Terbit" : "Draft");
+
+    info.style.fontSize = "12px";
+    info.style.color = "#a9b9ae";
+
+    const editButton = document.createElement("button");
+
+    editButton.type = "button";
+    editButton.textContent = "Edit Artikel";
+    editButton.className = "admin-btn";
+    editButton.style.marginRight = "8px";
+
+    editButton.addEventListener("click", function() {
+      editArticle(article.id);
+    });
+
+    const deleteButton = document.createElement("button");
+
+    deleteButton.type = "button";
+    deleteButton.textContent = "Hapus";
+    deleteButton.className = "danger";
+
+    deleteButton.addEventListener("click", function() {
+      deleteArticle(article.id);
+    });
+
+    item.append(title, info, editButton, deleteButton);
+
+    articleList.appendChild(item);
   });
+}
 
-document.getElementById("resetBtn")
-  .addEventListener("click", function() {
-    document.getElementById("articleForm").reset();
+// EDIT ARTIKEL
+function editArticle(id) {
+  const article = articlesCache.find(
+    item => Number(item.id) === Number(id)
+  );
+
+  if (!article) {
+    alert("Artikel tidak ditemukan.");
+    return;
+  }
+
+  document.getElementById("articleId").value = article.id;
+  document.getElementById("title").value = article.title || "";
+  document.getElementById("category").value =
+    article.category || "Berita Tambang";
+  document.getElementById("summary").value = article.summary || "";
+  document.getElementById("imageUrl").value = article.image_url || "";
+  document.getElementById("body").value = article.body || "";
+  document.getElementById("status").value = article.status || "draft";
+
+  saveBtn.textContent = "PERBARUI ARTIKEL";
+
+  showMessage(
+    formMessage,
+    "Mode edit artikel: " + article.title,
+    true
+  );
+
+  articleForm.scrollIntoView({
+    behavior: "smooth",
+    block: "start"
+  });
+}
+
+// SIMPAN DAN PERBARUI ARTIKEL
+articleForm.addEventListener("submit", async function(e) {
+  e.preventDefault();
+
+  const id = document.getElementById("articleId").value;
+
+  const article = {
+    title: document.getElementById("title").value.trim(),
+    category: document.getElementById("category").value,
+    summary: document.getElementById("summary").value.trim(),
+    image_url: document.getElementById("imageUrl").value.trim(),
+    body: document.getElementById("body").value.trim(),
+    status: document.getElementById("status").value
+  };
+
+  if (!article.title || !article.body) {
+    showMessage(formMessage, "Judul dan isi berita wajib diisi.");
+    return;
+  }
+
+  saveBtn.disabled = true;
+  saveBtn.textContent = "MENYIMPAN...";
+
+  try {
+    const data = await apiRequest(
+      id ? API + "/" + encodeURIComponent(id) : API,
+      {
+        method: id ? "PUT" : "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(article)
+      }
+    );
+
+    showMessage(formMessage, data.message, true);
+
+    articleForm.reset();
+
     document.getElementById("articleId").value = "";
-    document.getElementById("formMessage").textContent = "";
-  });
 
+    await loadArticles();
+
+  } catch (error) {
+    showMessage(formMessage, error.message);
+  } finally {
+    saveBtn.disabled = false;
+    saveBtn.textContent = "SIMPAN ARTIKEL";
+  }
+});
+
+// HAPUS ARTIKEL
+async function deleteArticle(id) {
+  const article = articlesCache.find(
+    item => Number(item.id) === Number(id)
+  );
+
+  if (!article) return;
+
+  if (!confirm('Hapus artikel "' + article.title + '"?')) {
+    return;
+  }
+
+  try {
+    const data = await apiRequest(
+      API + "/" + encodeURIComponent(id),
+      {
+        method: "DELETE"
+      }
+    );
+
+    showMessage(formMessage, data.message, true);
+
+    await loadArticles();
+
+  } catch (error) {
+    alert(error.message);
+  }
+}
+
+// KOSONGKAN FORMULIR
+resetBtn.addEventListener("click", function() {
+  articleForm.reset();
+
+  document.getElementById("articleId").value = "";
+
+  saveBtn.textContent = "SIMPAN ARTIKEL";
+
+  showMessage(formMessage, "");
+});
+
+// MULAI APLIKASI
 checkSession();
