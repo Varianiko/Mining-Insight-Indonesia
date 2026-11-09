@@ -37,6 +37,137 @@ renderDirectory("companyGrid",companies);renderDirectory("contractorGrid",contra
 document.getElementById("today").textContent=new Intl.DateTimeFormat("id-ID",{dateStyle:"full"}).format(new Date());
 document.getElementById("year").textContent=new Date().getFullYear();
 document.getElementById("menuToggle").addEventListener("click",()=>document.getElementById("mainNav").classList.toggle("open"));
-async function loadArticles(){const grid=document.getElementById("articleGrid");try{const r=await fetch("/api/articles");if(!r.ok)throw new Error();const items=await r.json();if(!items.length){grid.innerHTML='<div class="empty-state">Belum ada berita yang diterbitkan. Artikel pertama akan tampil di sini setelah admin mempublikasikannya.</div>';return}grid.innerHTML=items.map(a=>`<article class="article-card"><div class="article-image" style="${a.image_url?`background-image:url('${String(a.image_url).replace(/'/g,"%27")}')`:""}"></div><div class="article-body"><span class="article-category">${escapeHtml(a.category||"BERITA")}</span><h3>${escapeHtml(a.title)}</h3><p>${escapeHtml(a.summary||"Baca informasi selengkapnya di Mining Insight Indonesia.")}</p></div></article>`).join("")}catch(e){grid.innerHTML='<div class="empty-state">Berita belum dapat dimuat. Silakan coba beberapa saat lagi.</div>'}}
-function escapeHtml(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+
+async function loadArticles() {
+  const grid = document.getElementById("articleGrid");
+
+  if (!grid) {
+    console.error("Elemen articleGrid tidak ditemukan.");
+    return;
+  }
+
+  try {
+    grid.innerHTML = `
+      <div class="empty-state">
+        Memuat berita terbaru...
+      </div>
+    `;
+
+    const response = await fetch("/api/articles", {
+      method: "GET",
+      cache: "no-store"
+    });
+
+    if (!response.ok) {
+      throw new Error("Gagal mengambil berita dari server.");
+    }
+
+    const data = await response.json();
+
+    if (!data.success) {
+      throw new Error(data.message || "Gagal memuat artikel.");
+    }
+
+    // Mengambil daftar artikel dari respons API
+    const articles = data.articles || [];
+
+    // Hanya mengambil artikel yang sudah diterbitkan
+    const publishedArticles = articles.filter(article =>
+      article.status === "published"
+    );
+
+    if (publishedArticles.length === 0) {
+      grid.innerHTML = `
+        <div class="empty-state">
+          Belum ada berita yang diterbitkan.
+          Artikel akan tampil di sini setelah admin menerbitkannya.
+        </div>
+      `;
+      return;
+    }
+
+    // Menampilkan artikel ke halaman utama
+    grid.innerHTML = publishedArticles.map(article => {
+      const imageUrl = article.image_url || "";
+
+      return `
+        <article class="article-card">
+
+          <div class="article-image">
+            ${
+              imageUrl
+                ? `<img
+                    src="${escapeHtml(imageUrl)}"
+                    alt="${escapeHtml(article.title)}"
+                    loading="lazy"
+                    style="width:100%;height:100%;object-fit:cover;"
+                  >`
+                : ""
+            }
+          </div>
+
+          <div class="article-body">
+
+            <span class="article-category">
+              ${escapeHtml(article.category || "BERITA")}
+            </span>
+
+            <h3>
+              ${escapeHtml(article.title)}
+            </h3>
+
+            <p>
+              ${escapeHtml(
+                article.summary ||
+                "Baca informasi selengkapnya di Mining Insight Indonesia."
+              )}
+            </p>
+
+            <details>
+              <summary>Baca selengkapnya →</summary>
+
+              <div class="article-content">
+                ${escapeHtml(
+                  article.content || article.body || ""
+                ).replace(/\n/g, "<br>")}
+              </div>
+
+            </details>
+
+          </div>
+
+        </article>
+      `;
+    }).join("");
+
+  } catch (error) {
+    console.error("LOAD ARTICLES ERROR:", error);
+
+    grid.innerHTML = `
+      <div class="empty-state">
+        Berita belum dapat dimuat.
+        Silakan coba beberapa saat lagi.
+      </div>
+    `;
+  }
+}
+
+
+// Mengamankan teks sebelum ditampilkan ke halaman
+function escapeHtml(value) {
+  return String(value ?? "").replace(/[&<>"']/g, character => {
+    const entities = {
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#39;"
+    };
+
+    return entities[character];
+  });
+}
+
+
+// Memuat berita saat halaman utama dibuka
 loadArticles();
