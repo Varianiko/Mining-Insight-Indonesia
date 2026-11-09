@@ -84,9 +84,21 @@ Ringkasan
 <textarea id="summary" maxlength="400"></textarea>
 </label>
 
+<label><label>
+  Pilih foto dari HP
+  <input
+    id="imageFile"
+    type="file"
+    accept="image/jpeg,image/png,image/webp,image/gif"
+  >
+  <small>JPG, PNG, WEBP, atau GIF. Maksimal 10 MB.</small>
+</label>
+
+<div id="uploadMessage" class="admin-message"></div>
+
 <label>
-URL foto (opsional)
-<input id="imageUrl" type="url" placeholder="https://...">
+  URL foto (otomatis terisi setelah upload)
+  <input id="imageUrl" type="url" placeholder="URL foto akan muncul di sini">
 </label>
 
 <label>
