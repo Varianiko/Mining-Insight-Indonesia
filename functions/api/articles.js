@@ -13,15 +13,15 @@ export async function onRequestGet({ request, env }) {
   try {
     const auth = await requireAuth(request, env);
 
-    // Admin dapat melihat semua artikel.
-    // Pengunjung hanya dapat melihat artikel terbit.
     const result = auth.session
       ? await env.DB.prepare(`
-          SELECT * FROM articles
+          SELECT *, content AS body
+          FROM articles
           ORDER BY created_at DESC
         `).all()
       : await env.DB.prepare(`
-          SELECT * FROM articles
+          SELECT *, content AS body
+          FROM articles
           WHERE status = 'published'
           ORDER BY created_at DESC
         `).all();
@@ -60,20 +60,25 @@ export async function onRequestPost({ request, env }) {
     const category = String(data.category || "Berita Tambang").trim();
     const summary = String(data.summary || "").trim();
     const imageUrl = String(data.image_url || "").trim();
-    const body = String(data.body || "").trim();
+    const content = String(data.body || data.content || "").trim();
+
     const status = data.status === "published"
       ? "published"
       : "draft";
 
-    if (!title || !body) {
+    if (!title || !content) {
       return json({
         success: false,
         message: "Judul dan isi artikel wajib diisi."
       }, 400);
     }
 
-    if (title.length > 180 || summary.length > 400 ||
-        category.length > 100 || body.length > 100000) {
+    if (
+      title.length > 180 ||
+      summary.length > 400 ||
+      category.length > 100 ||
+      content.length > 100000
+    ) {
       return json({
         success: false,
         message: "Ada bagian artikel yang melebihi batas karakter."
@@ -83,6 +88,7 @@ export async function onRequestPost({ request, env }) {
     if (imageUrl) {
       try {
         const url = new URL(imageUrl);
+
         if (!["http:", "https:"].includes(url.protocol)) {
           throw new Error("URL tidak valid");
         }
@@ -94,20 +100,30 @@ export async function onRequestPost({ request, env }) {
       }
     }
 
-    const createdAt = new Date().toISOString();
+    // Membuat slug dari judul
+    const slugBase = title
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "")
+      .slice(0, 150) || "artikel";
 
+    const slug = slugBase + "-" + Date.now();
+
+    // Simpan ke database D1
     const result = await env.DB.prepare(`
       INSERT INTO articles
-      (title, category, summary, image_url, body, status, created_at)
+      (title, slug, content, category, image_url, status, summary)
       VALUES (?, ?, ?, ?, ?, ?, ?)
     `).bind(
       title,
+      slug,
+      content,
       category,
-      summary,
       imageUrl,
-      body,
       status,
-      createdAt
+      summary
     ).run();
 
     return json({
@@ -121,7 +137,7 @@ export async function onRequestPost({ request, env }) {
 
     return json({
       success: false,
-      message: "Database Error: " + error.message
+      message: "Gagal menyimpan artikel: " + error.message
     }, 500);
   }
 }
