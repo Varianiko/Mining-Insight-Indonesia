@@ -121,7 +121,7 @@ export async function onRequestPost({ request, env }) {
 
     return json({
       success: false,
-      message: "Gagal menyimpan artikel."
+      message: "Database Error: " + error.message
     }, 500);
   }
 }
