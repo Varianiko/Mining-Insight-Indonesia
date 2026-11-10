@@ -110,11 +110,20 @@ export async function onRequestPost({ request, env }) {
     const githubData = await githubResponse.json().catch(() => ({}));
 
     if (!githubResponse.ok) {
-      console.error("GITHUB UPLOAD ERROR:", githubResponse.status, githubData);
-
-      throw new Error(
-        githubData.message || "GitHub gagal menyimpan foto."
+      console.error(
+        "GITHUB UPLOAD ERROR:",
+        githubResponse.status,
+        githubData
       );
+
+      return json({
+        success: false,
+        message:
+          "GitHub menolak upload. HTTP " +
+          githubResponse.status +
+          ": " +
+          (githubData.message || "Tidak ada keterangan dari GitHub.")
+      }, 502);
     }
 
     const imageUrl =
