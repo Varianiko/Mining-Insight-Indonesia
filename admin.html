@@ -4,8 +4,21 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+
 <title>Admin | Mining Insight Indonesia</title>
+
+<!-- CSS -->
 <link rel="stylesheet" href="/style.css">
+
+<!-- PWA CONFIGURATION -->
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#0c2119">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="MII Admin">
+<link rel="apple-touch-icon" href="/icon-192.png">
+
 </head>
 
 <body class="admin-body">
@@ -55,7 +68,6 @@ MASUK KE DASHBOARD →
 </form>
 </div>
 
-
 <div id="dashboardView" class="hidden">
 
 <div class="admin-top">
@@ -70,17 +82,14 @@ Keluar
 </button>
 </div>
 
-
 <form id="articleForm" class="admin-form">
 
 <input type="hidden" id="articleId">
-
 
 <label>
 Judul berita
 <input id="title" required maxlength="180">
 </label>
-
 
 <label>
 Kategori
@@ -94,12 +103,10 @@ Kategori
 </select>
 </label>
 
-
 <label>
 Ringkasan
 <textarea id="summary" maxlength="400"></textarea>
 </label>
-
 
 <label>
 Pilih foto dari HP
@@ -111,9 +118,7 @@ accept="image/jpeg,image/png,image/webp,image/gif"
 <small>JPG, PNG, WEBP, atau GIF. Maksimal 10 MB.</small>
 </label>
 
-
 <div id="uploadMessage" class="admin-message"></div>
-
 
 <label>
 URL foto (otomatis terisi setelah upload)
@@ -124,12 +129,10 @@ placeholder="URL foto akan muncul di sini"
 >
 </label>
 
-
 <label>
 Isi berita
 <textarea id="body" required></textarea>
 </label>
-
 
 <label>
 Status
@@ -139,21 +142,17 @@ Status
 </select>
 </label>
 
-
 <button class="admin-btn" id="saveBtn">
 SIMPAN ARTIKEL
 </button>
-
 
 <button type="button" id="resetBtn" class="danger">
 Kosongkan formulir
 </button>
 
-
 <div id="formMessage" class="admin-message"></div>
 
 </form>
-
 
 <div class="admin-list">
 <h2>Daftar Artikel</h2>
@@ -164,14 +163,17 @@ Kosongkan formulir
 
 </section>
 
-
 <p style="text-align:center;color:#728176;font-size:11px;margin-top:22px">
 MINING INSIGHT INDONESIA • ADMIN PANEL
 </p>
 
 </main>
 
+<!-- ADMIN JAVASCRIPT -->
 <script src="/admin.js"></script>
+
+<!-- PWA SERVICE WORKER REGISTRATION -->
+<script src="/pwa-register.js"></script>
 
 </body>
 </html>
