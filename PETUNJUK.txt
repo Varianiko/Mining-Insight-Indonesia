@@ -1,0 +1,28 @@
+MINING INSIGHT INDONESIA ADMIN — PWA STARTER
+
+Isi paket:
+- manifest.webmanifest
+- service-worker.js
+- pwa-register.js
+- icon-192.png
+- icon-512.png
+
+PENTING:
+1. Upload semua file dan folder ke ROOT repository GitHub.
+2. Jangan menimpa admin.html atau admin.js dengan file dari paket ini.
+3. Setelah file PWA terunggah, edit admin.html dan tambahkan kode berikut di dalam <head>:
+
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#0c2119">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="MII Admin">
+<link rel="apple-touch-icon" href="/icon-192.png">
+
+4. Tepat sebelum </body> di admin.html, tambahkan:
+<script src="/pwa-register.js"></script>
+
+Jangan hapus script admin.js yang sudah ada.
+Setelah commit, tunggu Cloudflare Pages selesai deploy.
+PWA memerlukan website HTTPS.
