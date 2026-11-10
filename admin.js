@@ -11,6 +11,10 @@ const formMessage = document.getElementById("formMessage");
 const saveBtn = document.getElementById("saveBtn");
 const resetBtn = document.getElementById("resetBtn");
 
+const imageFile = document.getElementById("imageFile");
+const imageUrl = document.getElementById("imageUrl");
+const uploadMessage = document.getElementById("uploadMessage");
+
 const API = "/api/articles";
 
 let articlesCache = [];
@@ -41,6 +45,60 @@ async function apiRequest(url, options = {}) {
   return data;
 }
 
+// UPLOAD FOTO KE GITHUB
+imageFile.addEventListener("change", async function() {
+  const file = imageFile.files[0];
+
+  if (!file) return;
+
+  if (file.size > 10 * 1024 * 1024) {
+    showMessage(uploadMessage, "Ukuran foto maksimal 10 MB.");
+    imageFile.value = "";
+    return;
+  }
+
+  const allowedTypes = [
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+    "image/gif"
+  ];
+
+  if (!allowedTypes.includes(file.type)) {
+    showMessage(uploadMessage, "Format foto tidak didukung.");
+    imageFile.value = "";
+    return;
+  }
+
+  const formData = new FormData();
+  formData.append("file", file);
+
+  imageFile.disabled = true;
+  showMessage(uploadMessage, "Sedang mengunggah foto ke GitHub...");
+
+  try {
+    const data = await apiRequest("/api/upload", {
+      method: "POST",
+      body: formData
+    });
+
+    imageUrl.value = data.image_url;
+
+    showMessage(
+      uploadMessage,
+      "Foto berhasil diunggah. URL sudah terisi otomatis.",
+      true
+    );
+
+  } catch (error) {
+    showMessage(uploadMessage, "Upload gagal: " + error.message);
+    console.error("Upload error:", error);
+
+  } finally {
+    imageFile.disabled = false;
+  }
+});
+
 // MEMERIKSA LOGIN
 async function checkSession() {
   try {
@@ -67,7 +125,6 @@ async function checkSession() {
 function showDashboard() {
   loginView.classList.add("hidden");
   dashboardView.classList.remove("hidden");
-
   loadArticles();
 }
 
@@ -128,7 +185,6 @@ logoutBtn.addEventListener("click", async function() {
 
     articlesCache = [];
     articleForm.reset();
-
     document.getElementById("articleId").value = "";
 
     showLogin();
@@ -149,9 +205,7 @@ async function loadArticles() {
 
   try {
     const data = await apiRequest(API);
-
     articlesCache = data.articles || [];
-
     renderArticles();
 
   } catch (error) {
@@ -192,7 +246,6 @@ function renderArticles() {
     info.style.color = "#a9b9ae";
 
     const editButton = document.createElement("button");
-
     editButton.type = "button";
     editButton.textContent = "Edit Artikel";
     editButton.className = "admin-btn";
@@ -203,7 +256,6 @@ function renderArticles() {
     });
 
     const deleteButton = document.createElement("button");
-
     deleteButton.type = "button";
     deleteButton.textContent = "Hapus";
     deleteButton.className = "danger";
@@ -213,7 +265,6 @@ function renderArticles() {
     });
 
     item.append(title, info, editButton, deleteButton);
-
     articleList.appendChild(item);
   });
 }
@@ -234,11 +285,13 @@ function editArticle(id) {
   document.getElementById("category").value =
     article.category || "Berita Tambang";
   document.getElementById("summary").value = article.summary || "";
-  document.getElementById("imageUrl").value =
-    article.image_url || "";
+  imageUrl.value = article.image_url || "";
   document.getElementById("body").value = article.body || "";
   document.getElementById("status").value =
     article.status || "draft";
+
+  imageFile.value = "";
+  showMessage(uploadMessage, "");
 
   saveBtn.textContent = "PERBARUI ARTIKEL";
 
@@ -264,7 +317,7 @@ articleForm.addEventListener("submit", async function(e) {
     title: document.getElementById("title").value.trim(),
     category: document.getElementById("category").value,
     summary: document.getElementById("summary").value.trim(),
-    image_url: document.getElementById("imageUrl").value.trim(),
+    image_url: imageUrl.value.trim(),
     body: document.getElementById("body").value.trim(),
     status: document.getElementById("status").value
   };
@@ -293,6 +346,7 @@ articleForm.addEventListener("submit", async function(e) {
 
     articleForm.reset();
     document.getElementById("articleId").value = "";
+    showMessage(uploadMessage, "");
 
     await loadArticles();
 
@@ -326,7 +380,6 @@ async function deleteArticle(id) {
     );
 
     showMessage(formMessage, data.message, true);
-
     await loadArticles();
 
   } catch (error) {
@@ -337,11 +390,9 @@ async function deleteArticle(id) {
 // KOSONGKAN FORMULIR
 resetBtn.addEventListener("click", function() {
   articleForm.reset();
-
   document.getElementById("articleId").value = "";
-
+  showMessage(uploadMessage, "");
   saveBtn.textContent = "SIMPAN ARTIKEL";
-
   showMessage(formMessage, "");
 });
 
