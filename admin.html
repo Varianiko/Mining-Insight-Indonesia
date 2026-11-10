@@ -7,6 +7,7 @@
 <title>Admin | Mining Insight Indonesia</title>
 <link rel="stylesheet" href="/style.css">
 </head>
+
 <body class="admin-body">
 
 <main class="admin-wrap">
@@ -25,9 +26,13 @@
 <section class="admin-panel">
 
 <div id="loginView">
+
 <div class="eyebrow">SECURE ADMIN ACCESS</div>
 <h1>Admin Login</h1>
-<p>Masuk menggunakan kata sandi administrator yang disimpan secara aman di pengaturan Cloudflare. Jangan bagikan kata sandi ini kepada siapa pun.</p>
+
+<p>
+Masuk menggunakan kata sandi administrator yang disimpan secara aman di pengaturan Cloudflare. Jangan bagikan kata sandi ini kepada siapa pun.
+</p>
 
 <form id="loginForm" class="admin-form">
 
@@ -41,11 +46,15 @@ Kata sandi administrator
 <input type="password" id="password" required autocomplete="current-password">
 </label>
 
-<button class="admin-btn">MASUK KE DASHBOARD →</button>
+<button class="admin-btn">
+MASUK KE DASHBOARD →
+</button>
 
 <div id="loginMessage" class="admin-message"></div>
+
 </form>
 </div>
+
 
 <div id="dashboardView" class="hidden">
 
@@ -55,23 +64,29 @@ Kata sandi administrator
 <h1>Dashboard Admin</h1>
 <p>Kelola artikel Mining Insight Indonesia.</p>
 </div>
-<button id="logoutBtn" class="danger">Keluar</button>
+
+<button id="logoutBtn" class="danger">
+Keluar
+</button>
 </div>
+
 
 <form id="articleForm" class="admin-form">
 
 <input type="hidden" id="articleId">
+
 
 <label>
 Judul berita
 <input id="title" required maxlength="180">
 </label>
 
+
 <label>
 Kategori
 <select id="category">
 <option>Berita Tambang</option>
-<option>K3 & Keselamatan</option>
+<option>K3 &amp; Keselamatan</option>
 <option>Operasional</option>
 <option>Teknologi</option>
 <option>Regulasi</option>
@@ -79,32 +94,42 @@ Kategori
 </select>
 </label>
 
+
 <label>
 Ringkasan
 <textarea id="summary" maxlength="400"></textarea>
 </label>
 
-<label><label>
-  Pilih foto dari HP
-  <input
-    id="imageFile"
-    type="file"
-    accept="image/jpeg,image/png,image/webp,image/gif"
-  >
-  <small>JPG, PNG, WEBP, atau GIF. Maksimal 10 MB.</small>
+
+<label>
+Pilih foto dari HP
+<input
+id="imageFile"
+type="file"
+accept="image/jpeg,image/png,image/webp,image/gif"
+>
+<small>JPG, PNG, WEBP, atau GIF. Maksimal 10 MB.</small>
 </label>
+
 
 <div id="uploadMessage" class="admin-message"></div>
 
+
 <label>
-  URL foto (otomatis terisi setelah upload)
-  <input id="imageUrl" type="url" placeholder="URL foto akan muncul di sini">
+URL foto (otomatis terisi setelah upload)
+<input
+id="imageUrl"
+type="url"
+placeholder="URL foto akan muncul di sini"
+>
 </label>
+
 
 <label>
 Isi berita
 <textarea id="body" required></textarea>
 </label>
+
 
 <label>
 Status
@@ -114,15 +139,21 @@ Status
 </select>
 </label>
 
-<button class="admin-btn" id="saveBtn">SIMPAN ARTIKEL</button>
+
+<button class="admin-btn" id="saveBtn">
+SIMPAN ARTIKEL
+</button>
+
 
 <button type="button" id="resetBtn" class="danger">
 Kosongkan formulir
 </button>
 
+
 <div id="formMessage" class="admin-message"></div>
 
 </form>
+
 
 <div class="admin-list">
 <h2>Daftar Artikel</h2>
@@ -130,7 +161,9 @@ Kosongkan formulir
 </div>
 
 </div>
+
 </section>
+
 
 <p style="text-align:center;color:#728176;font-size:11px;margin-top:22px">
 MINING INSIGHT INDONESIA • ADMIN PANEL
@@ -139,5 +172,6 @@ MINING INSIGHT INDONESIA • ADMIN PANEL
 </main>
 
 <script src="/admin.js"></script>
+
 </body>
 </html>
