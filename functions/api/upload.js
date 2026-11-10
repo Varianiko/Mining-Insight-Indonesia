@@ -25,14 +25,12 @@ function toBase64(buffer) {
 }
 
 function safeFilename(name) {
-  const clean = String(name || "foto")
+  return String(name || "foto")
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .replace(/[^a-zA-Z0-9._-]/g, "-")
     .replace(/-+/g, "-")
-    .slice(-100);
-
-  return clean || "foto";
+    .slice(-100) || "foto";
 }
 
 export async function onRequestPost({ request, env }) {
@@ -47,7 +45,7 @@ export async function onRequestPost({ request, env }) {
   ) {
     return json({
       success: false,
-      message: "Konfigurasi GitHub belum lengkap di Cloudflare."
+      message: "Konfigurasi GitHub belum lengkap."
     }, 500);
   }
 
@@ -65,14 +63,14 @@ export async function onRequestPost({ request, env }) {
     if (!ALLOWED_TYPES.includes(file.type)) {
       return json({
         success: false,
-        message: "Format foto harus JPG, PNG, WEBP, atau GIF."
+        message: "Format foto tidak didukung."
       }, 400);
     }
 
     if (file.size === 0 || file.size > MAX_FILE_SIZE) {
       return json({
         success: false,
-        message: "Ukuran foto harus lebih dari 0 dan maksimal 10 MB."
+        message: "Ukuran foto maksimal 10 MB."
       }, 400);
     }
 
@@ -83,8 +81,6 @@ export async function onRequestPost({ request, env }) {
 
     const path = "uploads/articles/" + filename;
 
-    const content = toBase64(await file.arrayBuffer());
-
     const apiUrl =
       "https://api.github.com/repos/" +
       encodeURIComponent(env.GITHUB_OWNER) + "/" +
@@ -92,7 +88,9 @@ export async function onRequestPost({ request, env }) {
       "/contents/" +
       path.split("/").map(encodeURIComponent).join("/");
 
-    const githubResponse = await fetch(apiUrl, {
+    const content = toBase64(await file.arrayBuffer());
+
+    const response = await fetch(apiUrl, {
       method: "PUT",
       headers: {
         "Authorization": "Bearer " + env.GITHUB_TOKEN,
@@ -107,22 +105,26 @@ export async function onRequestPost({ request, env }) {
       })
     });
 
-    const githubData = await githubResponse.json().catch(() => ({}));
+    const responseText = await response.text();
 
-    if (!githubResponse.ok) {
-      console.error(
-        "GITHUB UPLOAD ERROR:",
-        githubResponse.status,
-        githubData
-      );
+    let githubData = {};
+
+    try {
+      githubData = JSON.parse(responseText);
+    } catch {
+      githubData = {};
+    }
+
+    if (!response.ok) {
+      console.error("GITHUB ERROR:", response.status, responseText);
 
       return json({
         success: false,
         message:
           "GitHub menolak upload. HTTP " +
-          githubResponse.status +
-          ": " +
-          (githubData.message || "Tidak ada keterangan dari GitHub.")
+          response.status +
+          ". Alasan: " +
+          (githubData.message || responseText || "Respons GitHub kosong.")
       }, 502);
     }
 
@@ -141,7 +143,7 @@ export async function onRequestPost({ request, env }) {
     });
 
   } catch (error) {
-    console.error("IMAGE UPLOAD ERROR:", error);
+    console.error("UPLOAD ERROR:", error);
 
     return json({
       success: false,
